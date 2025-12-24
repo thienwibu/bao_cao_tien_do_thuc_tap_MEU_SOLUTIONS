@@ -327,23 +327,35 @@
 
     <script>
         let reports = [];
-        const API_URL = '/api/reports';
+        const GITHUB_GIST_ID = 'thienwibu/bao-cao-tien-do-data'; // Sẽ lưu vào localStorage và có thể export
 
         // Set today's date as default
         document.getElementById('reportDate').valueAsDate = new Date();
 
-        // Load reports from server
-        async function loadReports() {
+        // Load reports from localStorage
+        function loadReports() {
             try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
-                if (data.success) {
-                    reports = data.reports;
-                    displayReports();
+                const saved = localStorage.getItem('workReports');
+                if (saved) {
+                    reports = JSON.parse(saved);
                 }
+                displayReports();
             } catch (error) {
                 console.error('Error loading reports:', error);
-                alert('Không thể tải báo cáo. Vui lòng thử lại!');
+                reports = [];
+                displayReports();
+            }
+        }
+
+        // Save reports to localStorage
+        function saveReports() {
+            try {
+                localStorage.setItem('workReports', JSON.stringify(reports));
+                // Also save to a shareable format
+                const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(reports, null, 2));
+                console.log('Data saved. Export URL:', dataUrl);
+            } catch (error) {
+                console.error('Error saving reports:', error);
             }
         }
 
@@ -368,6 +380,11 @@
             const password = prompt('Nhập mật khẩu để thêm báo cáo:');
             if (!password) return;
 
+            if (password !== 'The@king@999') {
+                alert('❌ Sai mật khẩu!');
+                return;
+            }
+
             const date = document.getElementById('reportDate').value;
             const task = document.getElementById('taskDescription').value;
             const progress = document.getElementById('progress').value;
@@ -385,29 +402,14 @@
                 nextSteps: nextSteps
             };
 
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, report })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    reports = data.reports;
-                    event.target.reset();
-                    document.getElementById('reportDate').valueAsDate = new Date();
-                    toggleForm();
-                    displayReports();
-                    alert('✅ Đã lưu báo cáo thành công!');
-                } else {
-                    alert('❌ ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error adding report:', error);
-                alert('Không thể lưu báo cáo. Vui lòng thử lại!');
-            }
+            reports.unshift(report);
+            saveReports();
+            
+            event.target.reset();
+            document.getElementById('reportDate').valueAsDate = new Date();
+            toggleForm();
+            displayReports();
+            alert('✅ Đã lưu báo cáo thành công!');
         }
 
         async function deleteReport(id) {
@@ -417,26 +419,15 @@
             const password = prompt('Nhập mật khẩu để xóa báo cáo:');
             if (!password) return;
 
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, id })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    reports = data.reports;
-                    displayReports();
-                    alert('✅ Đã xóa báo cáo!');
-                } else {
-                    alert('❌ ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error deleting report:', error);
-                alert('Không thể xóa báo cáo. Vui lòng thử lại!');
+            if (password !== 'The@king@999') {
+                alert('❌ Sai mật khẩu!');
+                return;
             }
+
+            reports = reports.filter(r => r.id !== id);
+            saveReports();
+            displayReports();
+            alert('✅ Đã xóa báo cáo!');
         }
 
         function formatDate(dateString) {
@@ -494,6 +485,13 @@
 
         // Load reports on page load
         loadReports();
+
+        // Sync data across tabs/windows
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'workReports') {
+                loadReports();
+            }
+        });
     </script>
 </body>
 </html>
