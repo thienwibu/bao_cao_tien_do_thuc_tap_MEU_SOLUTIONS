@@ -326,11 +326,26 @@
     </div>
 
     <script>
-        // Load reports from localStorage
-        let reports = JSON.parse(localStorage.getItem('workReports')) || [];
+        let reports = [];
+        const API_URL = '/api/reports';
 
         // Set today's date as default
         document.getElementById('reportDate').valueAsDate = new Date();
+
+        // Load reports from server
+        async function loadReports() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                if (data.success) {
+                    reports = data.reports;
+                    displayReports();
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                alert('Không thể tải báo cáo. Vui lòng thử lại!');
+            }
+        }
 
         function toggleForm() {
             const form = document.getElementById('reportForm');
@@ -346,8 +361,12 @@
             issueField.style.display = hasIssue === 'yes' ? 'block' : 'none';
         }
 
-        function addReport(event) {
+        async function addReport(event) {
             event.preventDefault();
+
+            // Yêu cầu mật khẩu
+            const password = prompt('Nhập mật khẩu để thêm báo cáo:');
+            if (!password) return;
 
             const date = document.getElementById('reportDate').value;
             const task = document.getElementById('taskDescription').value;
@@ -366,21 +385,57 @@
                 nextSteps: nextSteps
             };
 
-            reports.unshift(report);
-            localStorage.setItem('workReports', JSON.stringify(reports));
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, report })
+                });
 
-            // Reset form
-            event.target.reset();
-            document.getElementById('reportDate').valueAsDate = new Date();
-            toggleForm();
-            displayReports();
+                const data = await response.json();
+
+                if (data.success) {
+                    reports = data.reports;
+                    event.target.reset();
+                    document.getElementById('reportDate').valueAsDate = new Date();
+                    toggleForm();
+                    displayReports();
+                    alert('✅ Đã lưu báo cáo thành công!');
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error adding report:', error);
+                alert('Không thể lưu báo cáo. Vui lòng thử lại!');
+            }
         }
 
-        function deleteReport(id) {
-            if (confirm('Bạn có chắc muốn xóa báo cáo này?')) {
-                reports = reports.filter(r => r.id !== id);
-                localStorage.setItem('workReports', JSON.stringify(reports));
-                displayReports();
+        async function deleteReport(id) {
+            if (!confirm('Bạn có chắc muốn xóa báo cáo này?')) return;
+
+            // Yêu cầu mật khẩu
+            const password = prompt('Nhập mật khẩu để xóa báo cáo:');
+            if (!password) return;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    reports = data.reports;
+                    displayReports();
+                    alert('✅ Đã xóa báo cáo!');
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting report:', error);
+                alert('Không thể xóa báo cáo. Vui lòng thử lại!');
             }
         }
 
@@ -437,8 +492,8 @@
             `).join('');
         }
 
-        // Display reports on page load
-        displayReports();
+        // Load reports on page load
+        loadReports();
     </script>
 </body>
 </html>
