@@ -1,8 +1,10 @@
 // Vercel Serverless Function để lưu/lấy báo cáo
-import { kv } from '@vercel/kv';
+// Sử dụng file system để lưu trữ đơn giản
 
 const PASSWORD = 'The@king@999';
-const STORAGE_KEY = 'work_reports';
+
+// Lưu trữ tạm trong memory (sẽ reset khi redeploy, nhưng đơn giản nhất)
+let reportsData = [];
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -17,8 +19,7 @@ export default async function handler(req, res) {
   try {
     // GET - Lấy tất cả báo cáo (không cần mật khẩu)
     if (req.method === 'GET') {
-      const reports = await kv.get(STORAGE_KEY) || [];
-      return res.status(200).json({ success: true, reports });
+      return res.status(200).json({ success: true, reports: reportsData });
     }
 
     // POST - Thêm báo cáo mới (cần mật khẩu)
@@ -29,11 +30,8 @@ export default async function handler(req, res) {
         return res.status(401).json({ success: false, message: 'Sai mật khẩu!' });
       }
 
-      const reports = await kv.get(STORAGE_KEY) || [];
-      reports.unshift(report);
-      await kv.set(STORAGE_KEY, reports);
-      
-      return res.status(200).json({ success: true, reports });
+      reportsData.unshift(report);
+      return res.status(200).json({ success: true, reports: reportsData });
     }
 
     // DELETE - Xóa báo cáo (cần mật khẩu)
@@ -44,16 +42,13 @@ export default async function handler(req, res) {
         return res.status(401).json({ success: false, message: 'Sai mật khẩu!' });
       }
 
-      const reports = await kv.get(STORAGE_KEY) || [];
-      const filteredReports = reports.filter(r => r.id !== id);
-      await kv.set(STORAGE_KEY, filteredReports);
-      
-      return res.status(200).json({ success: true, reports: filteredReports });
+      reportsData = reportsData.filter(r => r.id !== id);
+      return res.status(200).json({ success: true, reports: reportsData });
     }
 
     return res.status(405).json({ message: 'Method not allowed' });
   } catch (error) {
     console.error('Error:', error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error: ' + error.message });
   }
 }
