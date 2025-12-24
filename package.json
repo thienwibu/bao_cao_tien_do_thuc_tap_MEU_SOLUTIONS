@@ -1,6 +1,7 @@
 {
   "name": "bao-cao-tien-do",
   "version": "1.0.0",
+  "type": "module",
   "description": "Báo cáo tiến độ công việc - Nguyễn Thế Minh Thiện",
   "dependencies": {
     "@vercel/blob": "^0.23.0"
