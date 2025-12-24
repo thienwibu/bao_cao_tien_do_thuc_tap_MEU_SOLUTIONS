@@ -1,10 +1,32 @@
 // Vercel Serverless Function để lưu/lấy báo cáo
-// Sử dụng file system để lưu trữ đơn giản
+import { put, head } from '@vercel/blob';
 
 const PASSWORD = 'The@king@999';
+const BLOB_FILENAME = 'reports.json';
 
-// Lưu trữ tạm trong memory (sẽ reset khi redeploy, nhưng đơn giản nhất)
-let reportsData = [];
+// Hàm đọc dữ liệu từ Blob
+async function getReports() {
+  try {
+    const blobUrl = `https://${process.env.BLOB_READ_WRITE_TOKEN?.split('_')[0]}.public.blob.vercel-storage.com/${BLOB_FILENAME}`;
+    const response = await fetch(blobUrl);
+    if (response.ok) {
+      return await response.json();
+    }
+    return [];
+  } catch (error) {
+    console.log('No existing data, starting fresh');
+    return [];
+  }
+}
+
+// Hàm lưu dữ liệu vào Blob
+async function saveReports(reports) {
+  const blob = await put(BLOB_FILENAME, JSON.stringify(reports), {
+    access: 'public',
+    contentType: 'application/json',
+  });
+  return blob;
+}
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -19,7 +41,8 @@ export default async function handler(req, res) {
   try {
     // GET - Lấy tất cả báo cáo (không cần mật khẩu)
     if (req.method === 'GET') {
-      return res.status(200).json({ success: true, reports: reportsData });
+      const reports = await getReports();
+      return res.status(200).json({ success: true, reports });
     }
 
     // POST - Thêm báo cáo mới (cần mật khẩu)
@@ -30,8 +53,11 @@ export default async function handler(req, res) {
         return res.status(401).json({ success: false, message: 'Sai mật khẩu!' });
       }
 
-      reportsData.unshift(report);
-      return res.status(200).json({ success: true, reports: reportsData });
+      const reports = await getReports();
+      reports.unshift(report);
+      await saveReports(reports);
+      
+      return res.status(200).json({ success: true, reports });
     }
 
     // DELETE - Xóa báo cáo (cần mật khẩu)
@@ -42,8 +68,11 @@ export default async function handler(req, res) {
         return res.status(401).json({ success: false, message: 'Sai mật khẩu!' });
       }
 
-      reportsData = reportsData.filter(r => r.id !== id);
-      return res.status(200).json({ success: true, reports: reportsData });
+      const reports = await getReports();
+      const filteredReports = reports.filter(r => r.id !== id);
+      await saveReports(filteredReports);
+      
+      return res.status(200).json({ success: true, reports: filteredReports });
     }
 
     return res.status(405).json({ message: 'Method not allowed' });
