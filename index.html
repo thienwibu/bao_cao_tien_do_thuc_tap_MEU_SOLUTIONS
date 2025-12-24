@@ -326,8 +326,18 @@
     </div>
 
     <script>
-        let reports = [];
-        const GITHUB_GIST_ID = 'thienwibu/bao-cao-tien-do-data'; // Sẽ lưu vào localStorage và có thể export
+        // Dữ liệu báo cáo mẫu
+        let reports = [
+            {
+                id: 1735027200000,
+                date: '2024-12-24',
+                task: 'Tự dựng cho riêng mình 1 source web (HTML đơn giản) để trình bày nội dung công việc mỗi ngày, % hoàn thành, vấn đề gặp phải, hướng xử lý tiếp theo rồi deploy lên Vercel',
+                progress: 100,
+                hasIssue: false,
+                issue: 'Không gặp khó khăn',
+                nextSteps: 'Buổi tiếp theo sẽ hoàn thành tốt các task được giao và bổ sung thêm các kiến thức để phục vụ cho thực tập như Angular và TypeScript'
+            }
+        ];
 
         // Set today's date as default
         document.getElementById('reportDate').valueAsDate = new Date();
@@ -337,12 +347,22 @@
             try {
                 const saved = localStorage.getItem('workReports');
                 if (saved) {
-                    reports = JSON.parse(saved);
+                    const savedReports = JSON.parse(saved);
+                    // Merge với báo cáo mẫu, tránh trùng lặp
+                    const allReports = [...savedReports];
+                    reports.forEach(r => {
+                        if (!allReports.find(sr => sr.id === r.id)) {
+                            allReports.push(r);
+                        }
+                    });
+                    reports = allReports.sort((a, b) => b.id - a.id);
+                } else {
+                    // Lần đầu load, lưu báo cáo mẫu
+                    saveReports();
                 }
                 displayReports();
             } catch (error) {
                 console.error('Error loading reports:', error);
-                reports = [];
                 displayReports();
             }
         }
